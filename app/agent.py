@@ -5,10 +5,23 @@ from dotenv import load_dotenv
 from ml.predict import predict_mood, get_mood_description
  
 load_dotenv()
- 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
- 
- 
+
+_groq_client = None
+
+
+def _get_groq_client():
+    global _groq_client
+    if _groq_client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "GROQ_API_KEY is not set. Create a key at https://console.groq.com/keys "
+                "and add GROQ_API_KEY=... to a .env file in the project root (or export it in your shell)."
+            )
+        _groq_client = Groq(api_key=api_key)
+    return _groq_client
+
+
 def analyze_compatibility(user1_data, user2_data):
     mood1 = predict_mood(user1_data["audio_features"])
     mood2 = predict_mood(user2_data["audio_features"])
@@ -85,7 +98,7 @@ Write 3 short paragraphs: what their music says about each person, where they co
  
 Then on a new line write exactly: PLAYLIST: followed by 5 song recommendations in format "Artist - Song Title" separated by | that would suit both their tastes."""
  
-    response = client.chat.completions.create(
+    response = _get_groq_client().chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=500,
